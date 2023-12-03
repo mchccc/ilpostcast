@@ -1,6 +1,7 @@
 FROM python:3.12-bullseye
 
-RUN apt-get update && apt-get install chromium chromium-driver rustc -y
+RUN apt-get update
+RUN apt-get install firefox-esr -y
 
 WORKDIR /usr/src/app
 ENV DB_FILE=ilpostcast.db

@@ -2,17 +2,20 @@ import re
 import time
 import requests
 import arrow
+import logging
 from icecream import ic
 from bs4 import BeautifulSoup as bs
-from selenium.webdriver import Chrome, ChromeOptions as Options
+from selenium.webdriver import Firefox, FirefoxOptions as Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-
+from selenium.webdriver.firefox.service import Service
+from webdriver_manager.firefox import GeckoDriverManager
 from sqlite_interface import DOMAIN, PODCASTS, create_table, insert_data, get_all_ids, get_all_images, insert_image_data, create_images_table
 
+# logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
 
 email = "mciccozz@gmail.com"
 password = ""
@@ -22,17 +25,41 @@ url_404 = f"{DOMAIN}/404"
 IMAGES = {}
 PRELOAD = False
 
+def get_logged_in_cookies():
+    with requests.session() as session:
+        r = session.get(url_login)
+        soup = bs(r.content, "lxml")
+        nonce = soup.find(id="woocommerce-login-nonce")["value"]
+        payload ={
+            "username": email,
+            "password": password,
+            "woocommerce-login-nonce": nonce,
+            "_wp_http_referer": "/mio-account/",
+            "login": "Log+in"
+        }
+        r = session.post(url_login, data=payload)
+        soup = bs(r.content, "lxml")
+        ic(soup.find("body", class_="logged-in").name == "body")
+        return session.cookies
+
 class LoggedInBrowser:
+    cookies = get_logged_in_cookies()
+
     @staticmethod
     def get_browser():
         options = Options()
-        options.add_argument('--no-sandbox')
-        options.add_argument('--headless=new')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument("--disable-cache")
-        options.add_argument("--incognito")
-        options.binary_location = "/usr/bin/chromium"
-        browser = Chrome(options=options)
+        # options.add_argument('--no-sandbox')
+        # options.add_argument('--headless=new')
+        options.add_argument('--headless')
+        # options.add_argument('--disable-dev-shm-usage')
+        # options.add_argument("--disable-cache")
+        # options.add_argument("--incognito")
+        browser = Firefox(
+            service=Service(
+                GeckoDriverManager().install()
+            ),
+            options=options
+        )
         return browser
 
     @staticmethod
@@ -43,27 +70,8 @@ class LoggedInBrowser:
             browser.add_cookie({"name": cookie.name, "value": cookie.value})
         return browser
 
-    @staticmethod
-    def get_logged_in_cookies():
-        with requests.session() as session:
-            r = session.get(url_login)
-            soup = bs(r.content, "lxml")
-            nonce = soup.find(id="woocommerce-login-nonce")["value"]
-            payload ={
-                "username": email,
-                "password": password,
-                "woocommerce-login-nonce": nonce,
-                "_wp_http_referer": "/mio-account/",
-                "login": "Log+in"
-            }
-            r = session.post(url_login, data=payload)
-            soup = bs(r.content, "lxml")
-            ic(soup.find("body", class_="logged-in").name == "body")
-            return session.cookies
-
     def __enter__(self):
-        cookies = LoggedInBrowser.get_logged_in_cookies()
-        self._browser = LoggedInBrowser.get_browser_with_cookies(cookies=cookies)
+        self._browser = LoggedInBrowser.get_browser_with_cookies(cookies=self.cookies)
         return self._browser
 
     def __exit__(self, exc_type, exc_value, exc_tb):
@@ -175,7 +183,6 @@ def get_episodes_list(url):
         ic(url)
         browser.get(url)
         content = browser.page_source
-        ic(content)
         soup = bs(content, "lxml")
         episodes = soup.find_all(id=re.compile("episode_"))
         for e in episodes:
