@@ -178,17 +178,17 @@ def get_data_single_page(url):
 
 def get_episodes_list(url):
     links = {}
-    browser = LoggedInBrowser.get_browser()
-    while url is not None:
-        ic(url)
-        browser.get(url)
-        content = browser.page_source
-        soup = bs(content, "lxml")
-        episodes = soup.find_all(id=re.compile("episode_"))
-        for e in episodes:
-            links[e["id"].split("_")[1]] = e.h2.a["href"]
-        url = browser.find_element(By.CLASS_NAME, "next").get_attribute("href") if PRELOAD else None
-        ic(links)
+    with LoggedInBrowser() as browser:
+        while url is not None:
+            ic(url)
+            browser.get(url)
+            content = browser.page_source
+            soup = bs(content, "lxml")
+            episodes = soup.find_all(id=re.compile("episode_"))
+            for e in episodes:
+                links[e["id"].split("_")[1]] = e.h2.a["href"]
+            url = browser.find_element(By.CLASS_NAME, "next").get_attribute("href") if PRELOAD else None
+            ic(links)
     return links
 
 
