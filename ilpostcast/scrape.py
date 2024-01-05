@@ -12,10 +12,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.firefox.service import Service
-from webdriver_manager.firefox import GeckoDriverManager
+from fake_useragent import UserAgent
 from sqlite_interface import DOMAIN, PODCASTS, create_table, insert_data, get_all_ids, get_all_images, insert_image_data, create_images_table
 
 # logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
+
+ua = UserAgent()
+user_agent = ic(ua.random)
 
 email = "mciccozz@gmail.com"
 password = ""
@@ -48,15 +51,11 @@ class LoggedInBrowser:
     @staticmethod
     def get_browser():
         options = Options()
-        # options.add_argument('--no-sandbox')
-        # options.add_argument('--headless=new')
         options.add_argument('--headless')
-        # options.add_argument('--disable-dev-shm-usage')
-        # options.add_argument("--disable-cache")
-        # options.add_argument("--incognito")
+        options.add_argument(f'--user-agent="{user_agent}"')
         browser = Firefox(
             service=Service(
-                GeckoDriverManager().install()
+                executable_path="/bin/geckodriver"
             ),
             options=options
         )

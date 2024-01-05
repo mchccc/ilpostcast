@@ -11,4 +11,5 @@ RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+RUN ./get_geckodriver.sh
 CMD [ "python", "./ilpostcast/scrape.py" ]

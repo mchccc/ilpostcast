@@ -18,4 +18,5 @@ types-python-dateutil==2.8.19.14
 urllib3==2.0.6
 selenium
 webdriver-manager
+fake-useragent
 flask
