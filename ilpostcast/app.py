@@ -45,5 +45,10 @@ def get_indagini_feed():
     return Response(get_rss("indagini"), mimetype='application/rss+xml')
 
 
+@app.route('/sanremo.xml')
+def get_sanremo_feed():
+    return Response(get_rss("sanremo"), mimetype='application/rss+xml')
+
+
 if __name__ == "__main__":
     app.run(debug=True)

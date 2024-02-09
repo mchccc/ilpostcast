@@ -34,6 +34,13 @@ PODCASTS = {
         "url": f"{DOMAIN}/episodes/podcasts/indagini/",
         "image": "https://www.ilpost.it/wp-content/uploads/2022/03/Image-from-iOS-1.jpg.webp"
     },
+    "sanremo": {
+        "name": "L'Indomabile Podcast del Post su Sanremo",
+        "author": "Matteo Bordone, Giulia Balducci, Luca Misculin, Stefano Vizio",
+        "description": "Indomabile.",
+        "url": f"{DOMAIN}/episodes/podcasts/il-podcast-del-post-su-sanremo/",
+        "image": "https://www.ilpost.it/wp-content/uploads/2024/02/01/1706806182-copertina676x355.jpg"
+    },
 }
 
 class DB:

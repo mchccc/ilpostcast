@@ -23,6 +23,7 @@ xmlns:content="http://purl.org/rss/1.0/modules/content/">
         <itunes:author>{podcast['author']}</itunes:author>
         <itunes:explicit>false</itunes:explicit>"""
     date_format = "%a, %d %b %Y 08:00:00 GMT"  # %H:%M:%S %z"
+
     for id, url, desc, title, date, content_type, content_length, img_url in get_all_items(table_name):
         feed += f"""
         <item>
@@ -39,6 +40,7 @@ xmlns:content="http://purl.org/rss/1.0/modules/content/">
     feed += """
     </channel>
 </rss>"""
+
     return feed
 
 
