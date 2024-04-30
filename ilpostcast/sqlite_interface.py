@@ -11,35 +11,49 @@ PODCASTS = {
         "author": "Francesco Costa",
         "description": "Comincia la giornata con la rassegna stampa di Francesco Costa, ogni mattina, prima delle 8. Altrimenti non sarebbe Morning.",
         "url": f"{DOMAIN}/episodes/podcasts/morning/",
-        "image": "https://www.ilpost.it/wp-content/uploads/2021/05/evening-1.png"
+        "image": f"{DOMAIN}/wp-content/uploads/2021/05/evening-1.png"
     },
     "tienimi_bordone": {
         "name": "Tienimi Bordone",
         "author": "Matteo Bordone",
         "description": "Il podcast quotidiano di Matteo Bordone. Tutto quello che non sapevi di voler sapere.",
         "url": f"{DOMAIN}/episodes/podcasts/tienimi-bordone/",
-        "image": "https://www.ilpost.it/wp-content/uploads/2021/04/app-tb.jpg"
+        "image": f"{DOMAIN}/wp-content/uploads/2021/04/app-tb.jpg"
     },
     "tienimi_morning": {
         "name": "Tienimi Morning",
         "author": "Matteo Bordone & Francesco Costa",
         "description": "Sabato 24 settembre 2022 durante una delle giornate di incontri dal vivo organizzate dal Post a Faenza, Matteo Bordone e Francesco Costa, titolari dei podcast del Post Tienimi Bordone e Morning, avevano deciso di fare un incontro insieme. Quel primo Tienimi Morning, così lo avevano chiamato, lo avevamo registrato e pubblicato: e visti gli apprezzamenti ricevuti appena c'è stata occasione lo abbiamo rifatto.",
         "url": f"{DOMAIN}/episodes/podcasts/tienimi_morning/",
-        "image": "https://www.ilpost.it/wp-content/uploads/2022/09/25/1664102867-tm.png"
+        "image": f"{DOMAIN}/wp-content/uploads/2022/09/25/1664102867-tm.png"
     },
     "indagini": {
         "name": "Indagini",
         "author": "Stefano Nazzi",
         "description": "Cosa è successo dopo alcuni dei più noti casi di cronaca nera italiana. Una storia ogni mese, il primo del mese. Di Stefano Nazzi.",
         "url": f"{DOMAIN}/episodes/podcasts/indagini/",
-        "image": "https://www.ilpost.it/wp-content/uploads/2022/03/Image-from-iOS-1.jpg.webp"
+        "image": f"{DOMAIN}/wp-content/uploads/2022/03/Image-from-iOS-1.jpg.webp"
+    },
+    "altreindagini": {
+        "name": "Altre Indagini",
+        "author": "Stefano Nazzi",
+        "description": "Le puntate speciali di Indagini che raccontano le grandi vicende della storia italiana, di Stefano Nazzi.",
+        "url": f"{DOMAIN}/episodes/podcasts/altre-indagini/",
+        "image": f"{DOMAIN}/wp-content/uploads/2024/04/09/1712670309-Altre_Indagini_676x355.jpg"
     },
     "sanremo": {
         "name": "L'Indomabile Podcast del Post su Sanremo",
         "author": "Matteo Bordone, Giulia Balducci, Luca Misculin, Stefano Vizio",
         "description": "Indomabile.",
         "url": f"{DOMAIN}/episodes/podcasts/il-podcast-del-post-su-sanremo/",
-        "image": "https://www.ilpost.it/wp-content/uploads/2024/02/01/1706806182-copertina676x355.jpg"
+        "image": f"{DOMAIN}/wp-content/uploads/2024/02/01/1706806182-copertina676x355.jpg"
+    },
+    "eurovision": {
+        "name": "L'Ineludibile Podcast del Post sull'Eurovision Song Contest",
+        "author": "Matteo Bordone, Giulia Balducci, Stefano Vizio, Luca Misculin",
+        "description": "Ineludibile.",
+        "url": f"{DOMAIN}/episodes/podcasts/podcast-eurovision/",
+        "image": f"{DOMAIN}/wp-content/uploads/2024/04/30/1714468634-copertina676x355.jpg"
     },
 }
 

@@ -45,9 +45,19 @@ def get_indagini_feed():
     return Response(get_rss("indagini"), mimetype='application/rss+xml')
 
 
+@app.route('/altre_indagini.xml')
+def get_altre_indagini_feed():
+    return Response(get_rss("altreindagini"), mimetype='application/rss+xml')
+
+
 @app.route('/sanremo.xml')
 def get_sanremo_feed():
     return Response(get_rss("sanremo"), mimetype='application/rss+xml')
+
+
+@app.route('/eurovision.xml')
+def get_eurovision_feed():
+    return Response(get_rss("eurovision"), mimetype='application/rss+xml')
 
 
 if __name__ == "__main__":
