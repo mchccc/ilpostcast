@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye
+FROM python:3.12.2-bullseye
 
 RUN apt-get update
 RUN apt-get install firefox-esr -y
