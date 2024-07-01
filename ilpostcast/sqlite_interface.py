@@ -8,6 +8,7 @@ DOMAIN = "https://ilpost.it"
 PODCASTS = {
     "morning": {
         "name": "Morning",
+        "table_name": "morning",
         "author": "Francesco Costa",
         "description": "Comincia la giornata con la rassegna stampa di Francesco Costa, ogni mattina, prima delle 8. Altrimenti non sarebbe Morning.",
         "url": f"{DOMAIN}/episodes/podcasts/morning/",
@@ -15,6 +16,7 @@ PODCASTS = {
     },
     "tienimi_bordone": {
         "name": "Tienimi Bordone",
+        "table_name": "tienimi_bordone",
         "author": "Matteo Bordone",
         "description": "Il podcast quotidiano di Matteo Bordone. Tutto quello che non sapevi di voler sapere.",
         "url": f"{DOMAIN}/episodes/podcasts/tienimi-bordone/",
@@ -22,6 +24,7 @@ PODCASTS = {
     },
     "tienimi_morning": {
         "name": "Tienimi Morning",
+        "table_name": "tienimi_morning",
         "author": "Matteo Bordone & Francesco Costa",
         "description": "Sabato 24 settembre 2022 durante una delle giornate di incontri dal vivo organizzate dal Post a Faenza, Matteo Bordone e Francesco Costa, titolari dei podcast del Post Tienimi Bordone e Morning, avevano deciso di fare un incontro insieme. Quel primo Tienimi Morning, così lo avevano chiamato, lo avevamo registrato e pubblicato: e visti gli apprezzamenti ricevuti appena c'è stata occasione lo abbiamo rifatto.",
         "url": f"{DOMAIN}/episodes/podcasts/tienimi_morning/",
@@ -29,6 +32,7 @@ PODCASTS = {
     },
     "indagini": {
         "name": "Indagini",
+        "table_name": "indagini",
         "author": "Stefano Nazzi",
         "description": "Cosa è successo dopo alcuni dei più noti casi di cronaca nera italiana. Una storia ogni mese, il primo del mese. Di Stefano Nazzi.",
         "url": f"{DOMAIN}/episodes/podcasts/indagini/",
@@ -36,6 +40,7 @@ PODCASTS = {
     },
     "altreindagini": {
         "name": "Altre Indagini",
+        "table_name": "altreindagini",
         "author": "Stefano Nazzi",
         "description": "Le puntate speciali di Indagini che raccontano le grandi vicende della storia italiana, di Stefano Nazzi.",
         "url": f"{DOMAIN}/episodes/podcasts/altre-indagini/",
@@ -43,6 +48,7 @@ PODCASTS = {
     },
     "sanremo": {
         "name": "L'Indomabile Podcast del Post su Sanremo",
+        "table_name": "sanremo",
         "author": "Matteo Bordone, Giulia Balducci, Luca Misculin, Stefano Vizio",
         "description": "Indomabile.",
         "url": f"{DOMAIN}/episodes/podcasts/il-podcast-del-post-su-sanremo/",
@@ -50,6 +56,7 @@ PODCASTS = {
     },
     "eurovision": {
         "name": "L'Ineludibile Podcast del Post sull'Eurovision Song Contest",
+        "table_name": "eurovision",
         "author": "Matteo Bordone, Giulia Balducci, Stefano Vizio, Luca Misculin",
         "description": "Ineludibile.",
         "url": f"{DOMAIN}/episodes/podcasts/podcast-eurovision/",

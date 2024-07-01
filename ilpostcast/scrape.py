@@ -5,6 +5,7 @@ import arrow
 import logging
 from icecream import ic
 from bs4 import BeautifulSoup as bs
+from multiprocessing import Pool
 from selenium.webdriver import Firefox, FirefoxOptions as Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -46,7 +47,8 @@ def get_logged_in_cookies():
         return session.cookies
 
 class LoggedInBrowser:
-    cookies = get_logged_in_cookies()
+    def __init__(self, cookies):
+        self.cookies = cookies
 
     @staticmethod
     def get_browser():
@@ -146,19 +148,21 @@ def get_data(url, existing_ids={}):
                 content = browser.page_source
                 data = extract_links(content, existing_ids)
                 try:
-                    next_url = browser.find_element(By.CLASS_NAME, "next").get_attribute("href")
+                    next_url = browser.find_element(
+                        By.CLASS_NAME, "next"
+                    ).get_attribute("href")
                 except NoSuchElementException:
                     next_url = None
                 ic(data, attempts, next_url)
     return data, next_url
 
 
-def get_data_single_page(url):
+def get_data_single_page(url, cookies):
     data = None
     attempts = 0
     while data is None:
         attempts += 1
-        with LoggedInBrowser() as browser:
+        with LoggedInBrowser(cookies) as browser:
             browser.get(url)
             audio_locator = (By.XPATH, "//div[@class='ilpostPlayer' and @data-file]")
             audio_present = EC.text_to_be_present_in_element_attribute(
@@ -175,19 +179,31 @@ def get_data_single_page(url):
     return data
 
 
-def get_episodes_list(url):
+def get_page_source(driver, url):
+    browser.get(url)
+    content = browser.page_source
+    return content
+
+
+def get_episodes_list(url, existing_ids, cookies):
     links = {}
-    with LoggedInBrowser() as browser:
+    with LoggedInBrowser(cookies) as browser:
         while url is not None:
+            page_links = {}
             ic(url)
             browser.get(url)
             content = browser.page_source
             soup = bs(content, "lxml")
             episodes = soup.find_all(id=re.compile("episode_"))
             for e in episodes:
-                links[e["id"].split("_")[1]] = e.h2.a["href"]
-            url = browser.find_element(By.CLASS_NAME, "next").get_attribute("href") if PRELOAD else None
-            ic(links)
+                episode_id = e["id"].split("_")[1]
+                if episode_id not in existing_ids:
+                    page_links[episode_id] = e.h2.a["href"]
+            ic(url, page_links)
+            url = browser.find_element(
+                By.CLASS_NAME, "next"
+            ).get_attribute("href") if PRELOAD else None
+            links.update(page_links)
     return links
 
 
