@@ -2,6 +2,7 @@ import re
 import time
 import requests
 import arrow
+import asyncio
 import logging
 from icecream import ic
 from bs4 import BeautifulSoup as bs
@@ -86,6 +87,7 @@ def get_date_from_desc(desc):
 
 
 def extract_single_link(content):
+    global IMAGES
     soup = bs(content, "lxml")
     link = soup.select_one(".ilpostPlayer[data-file]")
     url = link["data-file"]
@@ -221,14 +223,32 @@ def populate_tables():
                 insert_data(data, table=table_name)
 
 
-if __name__ == "__main__":
+def get_links_new_episodes(params_tuple):
+    cookies, podcast = params_tuple
+    create_table(name=podcast["table_name"], drop=False)
+    existing_ids = set(get_all_ids(table=podcast["table_name"]))
+    links = get_episodes_list(podcast["url"], existing_ids, cookies)
+    return links, podcast["table_name"]
+
+
+def main():
+    global IMAGES
     create_images_table()
     IMAGES = get_all_images()
-    for table_name, podcast in PODCASTS.items():
-        create_table(name=table_name, drop=False)
-        existing_ids = set(get_all_ids(table=table_name))
-        links = {key: value for key, value in get_episodes_list(podcast["url"]).items() if key not in existing_ids}
-        ic(links, podcast, table_name)
+    cookies = get_logged_in_cookies()
+
+    with Pool(4) as p:
+        new_episodes = p.map(
+            get_links_new_episodes,
+            [(cookies, podcast) for podcast in PODCASTS.values()],
+            chunksize=2
+        )
+
+    for links, table_name in new_episodes:
+        ic(links, table_name)
         for episode_id, link in links.items():
-            data = get_data_single_page(link)
+            data = get_data_single_page(link, cookies)
             insert_data([data], table=table_name)
+
+if __name__ == "__main__":
+    main()
