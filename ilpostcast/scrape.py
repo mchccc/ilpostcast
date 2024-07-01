@@ -204,7 +204,7 @@ def get_episodes_list(url, existing_ids, cookies):
             ic(url, page_links)
             url = browser.find_element(
                 By.CLASS_NAME, "next"
-            ).get_attribute("href") if PRELOAD else None
+            ).get_attribute("href") if PRELOAD or len(episodes) == len(page_links) else None
             links.update(page_links)
     return links
 

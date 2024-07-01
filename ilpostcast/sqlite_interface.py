@@ -62,6 +62,14 @@ PODCASTS = {
         "url": f"{DOMAIN}/episodes/podcasts/podcast-eurovision/",
         "image": f"{DOMAIN}/wp-content/uploads/2024/04/30/1714468634-copertina676x355.jpg"
     },
+    "ascolta": {
+        "name": "Ascolta",
+        "table_name": "ascolta",
+        "author": "Redazione ilPost",
+        "description": "Gli articoli del Post, letti e spiegati da chi li ha scritti",
+        "url": f"{DOMAIN}/episodes/podcasts/ascolta/",
+        "image": f"{DOMAIN}/wp-content/uploads/2024/05/31/1717170298-copertina676x355-autori.jpg"
+    },
 }
 
 class DB:

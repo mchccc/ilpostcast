@@ -50,6 +50,11 @@ def get_altre_indagini_feed():
     return Response(get_rss("altreindagini"), mimetype='application/rss+xml')
 
 
+@app.route('/ascolta.xml')
+def get_ascolta_feed():
+    return Response(get_rss("ascolta"), mimetype='application/rss+xml')
+
+
 @app.route('/sanremo.xml')
 def get_sanremo_feed():
     return Response(get_rss("sanremo"), mimetype='application/rss+xml')
