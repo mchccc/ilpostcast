@@ -244,11 +244,17 @@ def main():
             chunksize=2
         )
 
+    report = {}
     for links, table_name in new_episodes:
         ic(links, table_name)
+        dates = []
         for episode_id, link in links.items():
             data = get_data_single_page(link, cookies)
             insert_data([data], table=table_name)
+            dates.append(data["date"])
+        if dates:
+            report[table_name] = dates
+    ic(report)
 
 if __name__ == "__main__":
     main()

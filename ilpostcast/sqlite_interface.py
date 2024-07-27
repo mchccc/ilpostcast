@@ -30,6 +30,14 @@ PODCASTS = {
         "url": f"{DOMAIN}/episodes/podcasts/tienimi_morning/",
         "image": f"{DOMAIN}/wp-content/uploads/2022/09/25/1664102867-tm.png"
     },
+    "tienimi_parigi": {
+        "name": "Tienimi Parigi",
+        "table_name": "tienimi_parigi",
+        "author": "Matteo Bordone",
+        "description": "Il podcast di Matteo Bordone sulle Olimpiadi di Parigi: tutti i giorni, dal 26 luglio al 12 agosto.",
+        "url": f"{DOMAIN}/episodes/podcasts/tienimi-parigi/",
+        "image": f"{DOMAIN}/wp-content/uploads/2024/07/16/1721164092-Articolo1200x600-3.jpg"
+    },
     "indagini": {
         "name": "Indagini",
         "table_name": "indagini",

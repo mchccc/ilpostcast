@@ -40,6 +40,11 @@ def get_tienimi_morning_feed():
     return Response(get_rss("tienimi_morning"), mimetype='application/rss+xml')
 
 
+@app.route('/tienimi_parigi.xml')
+def get_tienimi_parigi_feed():
+    return Response(get_rss("tienimi_parigi"), mimetype='application/rss+xml')
+
+
 @app.route('/indagini.xml')
 def get_indagini_feed():
     return Response(get_rss("indagini"), mimetype='application/rss+xml')
