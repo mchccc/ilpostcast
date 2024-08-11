@@ -1,7 +1,10 @@
 import requests
-from datetime import datetime
-from sqlite_interface import PODCASTS, get_all_items
+import arrow
+from sqlite_interface import get_all_items
+from scrape_new import PODCASTS, preload_podcasts
 from icecream import ic
+
+preload_podcasts()  # must run to get all the up-to-date informations for podcasts
 
 def get_rss(table_name):
     podcast = PODCASTS[table_name]
@@ -22,7 +25,7 @@ xmlns:content="http://purl.org/rss/1.0/modules/content/">
         <itunes:category text="News" />
         <itunes:author>{podcast['author']}</itunes:author>
         <itunes:explicit>false</itunes:explicit>"""
-    date_format = "%a, %d %b %Y 08:00:00 GMT"  # %H:%M:%S %z"
+    date_format = "%a, %d %b %Y %H:%M:%S %z"
 
     for id, url, desc, title, date, content_type, content_length, img_url in get_all_items(table_name):
         feed += f"""
@@ -34,7 +37,7 @@ xmlns:content="http://purl.org/rss/1.0/modules/content/">
                 type="{content_type}"
                 url="{url}"
             />
-            <pubDate>{datetime.strptime(date, "%Y-%m-%d").strftime(date_format)}</pubDate>
+            <pubDate>{arrow.get(date).format(arrow.FORMAT_RSS)}</pubDate>
             <itunes:image href="{img_url}" />
         </item>"""
     feed += """
