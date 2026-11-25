@@ -1,30 +1,22 @@
 [tool.poetry]
 name = "ilpostcast"
 version = "0.1.0"
-description = ""
+description = "Fetches il Post podcasts from its API and serves them as RSS feeds"
 authors = ["michele <mciccozz@gmail.com>"]
 readme = "README.md"
 
+# requirements.txt (used by the Docker images) is generated from poetry.lock:
+#   poetry export -f requirements.txt --without-hashes --only main -o requirements.txt
 [tool.poetry.dependencies]
 python = "^3.12"
-requests = "2.31.0"
-lxml = "4.9.3"
-debugpy = "1.8.0"
-icecream = "2.1.3"
-arrow = "1.3.0"
-asttokens = "2.4.0"
-certifi = "2023.7.22"
-charset-normalizer = "3.3.0"
-colorama = "0.4.6"
-executing = "2.0.0"
-idna = "3.4"
-pygments = "2.16.1"
-python-dateutil = "2.8.2"
-six = "1.16.0"
-types-python-dateutil = "2.8.19.14"
-urllib3 = "2.0.6"
-flask = "^3.0.0"
-fake-useragent = "^1.5.1"
+requests = "^2.34"
+arrow = "^1.4"
+flask = "^3.1"
+gunicorn = "^27.0"
+icecream = "^2.2"
+
+[tool.poetry.group.dev.dependencies]
+debugpy = "^1.8"
 
 
 [build-system]

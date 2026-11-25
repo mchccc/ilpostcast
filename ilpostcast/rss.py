@@ -23,16 +23,18 @@ def add_text(parent, tag, text):
     return element
 
 
-def get_rss(key):
+def get_rss(key, feed_name=None):
     """Build a podcast's RSS feed as UTF-8 bytes.
 
-    ElementTree escapes all text and attributes, so titles and the HTML
-    descriptions can't break the XML.
+    `feed_name` is the name in the feed's URL (defaults to `key`), used for
+    the feed's self link. ElementTree escapes all text and attributes, so
+    titles and the HTML descriptions can't break the XML.
     """
     podcast = PODCASTS[key]
     rss = ET.Element("rss", version="2.0")
     channel = ET.SubElement(rss, "channel")
-    ET.SubElement(channel, f"{{{ATOM}}}link", href=f"https://podcast.mccc.it/{key}.xml", rel="self", type="application/rss+xml")
+    self_url = f"https://podcast.mccc.it/{feed_name or key}.xml"
+    ET.SubElement(channel, f"{{{ATOM}}}link", href=self_url, rel="self", type="application/rss+xml")
     add_text(channel, "title", podcast["name"])
     add_text(channel, "description", podcast["description"])
     add_text(channel, "link", podcast["link"])
