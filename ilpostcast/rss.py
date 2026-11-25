@@ -1,74 +1,97 @@
 import re
-import xml.etree.ElementTree as ET
+import html
+from xml.sax.saxutils import escape, quoteattr
 import arrow
 from sqlite_interface import init_db, get_all_items
 from scrape_new import PODCASTS, preload_podcasts
 
-ITUNES = "http://www.itunes.com/dtds/podcast-1.0.dtd"
-ATOM = "http://www.w3.org/2005/Atom"
-ET.register_namespace("itunes", ITUNES)
-ET.register_namespace("atom", ATOM)
-
-# Control characters that are illegal in XML 1.0 even when escaped.
+# Control characters that are illegal in XML 1.0, even escaped or inside CDATA.
 INVALID_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
 init_db()  # creates the schema (and migrates old data) if the scraper hasn't yet
 preload_podcasts()  # must run to get all the up-to-date informations for podcasts
 
 
-def add_text(parent, tag, text):
-    element = ET.SubElement(parent, tag)
-    if text is not None:
-        element.text = INVALID_XML_CHARS.sub("", str(text))
-    return element
+def clean(value):
+    return INVALID_XML_CHARS.sub("", "" if value is None else str(value))
+
+
+def text(value):
+    """Escape a plain-text value for use as element content."""
+    return escape(clean(value))
+
+
+def attr(value):
+    """Escape and quote a value for use as an attribute (the quotes are included)."""
+    return quoteattr(clean(value))
+
+
+def cdata(value):
+    """Wrap HTML in a CDATA section.
+
+    The bytes between the tags stay exactly the HTML, which is what podcast
+    apps render as show notes, and the feed is still valid XML whatever the
+    HTML looks like. A literal "]]>" is split across two sections.
+    """
+    return "<![CDATA[" + clean(value).replace("]]>", "]]]]><![CDATA[>") + "]]>"
+
+
+def render_item(episode):
+    lines = [f"<title>{text(episode['title'])}</title>"]
+    if episode["link"]:
+        lines.append(f"<link>{text(episode['link'])}</link>")
+    lines += [
+        f"<description>{cdata(episode['description'])}</description>",
+        # The enclosure URL, not the episode id: apps have been identifying these
+        # episodes by enclosure URL while the feed had no guid, so this keeps them
+        # from showing every episode again as new.
+        f'<guid isPermaLink="false">{text(episode["url"])}</guid>',
+        f'<enclosure length={attr(episode["content_length"] or 0)}'
+        f' type={attr(episode["content_type"] or "audio/mpeg")} url={attr(episode["url"])} />',
+        f"<pubDate>{arrow.get(episode['date']).format(arrow.FORMAT_RSS)}</pubDate>",
+    ]
+    if episode["duration_ms"]:
+        lines.append(f"<itunes:duration>{round(episode['duration_ms'] / 1000)}</itunes:duration>")
+    if episode["image_url"]:
+        lines.append(f"<itunes:image href={attr(episode['image_url'])} />")
+    body = "\n            ".join(lines)
+    return f"""
+        <item>
+            {body}
+        </item>"""
 
 
 def get_rss(key, feed_name=None):
     """Build a podcast's RSS feed as UTF-8 bytes.
 
-    `feed_name` is the name in the feed's URL (defaults to `key`), used for
-    the feed's self link. ElementTree escapes all text and attributes, so
-    titles and the HTML descriptions can't break the XML.
+    `feed_name` is the name in the feed's URL (defaults to `key`), used for the
+    self link. Every value goes through text(), attr() or cdata(), so nothing
+    coming from the API can break the XML. The API's podcast name, author and
+    description are plain text with HTML entities (e.g. "&#8217;"), so they're
+    decoded before being escaped.
     """
     podcast = PODCASTS[key]
-    rss = ET.Element("rss", version="2.0")
-    channel = ET.SubElement(rss, "channel")
     self_url = f"https://podcast.mccc.it/{feed_name or key}.xml"
-    ET.SubElement(channel, f"{{{ATOM}}}link", href=self_url, rel="self", type="application/rss+xml")
-    add_text(channel, "title", podcast["name"])
-    add_text(channel, "description", podcast["description"])
-    add_text(channel, "link", podcast["link"])
-    add_text(channel, "language", "it")
-    add_text(channel, "copyright", "© il Post")
-    ET.SubElement(channel, f"{{{ITUNES}}}image", href=podcast["image"])
-    ET.SubElement(channel, f"{{{ITUNES}}}category", text="News")
-    add_text(channel, f"{{{ITUNES}}}author", podcast["author"])
-    add_text(channel, f"{{{ITUNES}}}explicit", "false")
-
-    for episode in get_all_items(key):
-        item = ET.SubElement(channel, "item")
-        add_text(item, "title", episode["title"])
-        if episode["link"]:
-            add_text(item, "link", episode["link"])
-        add_text(item, "description", episode["description"])
-        # The enclosure URL, not the episode id: apps have been identifying these
-        # episodes by enclosure URL while the feed had no guid, so this keeps them
-        # from showing every episode again as new.
-        add_text(item, "guid", episode["url"]).set("isPermaLink", "false")
-        ET.SubElement(
-            item, "enclosure",
-            length=str(episode["content_length"] or 0),
-            type=episode["content_type"] or "audio/mpeg",
-            url=episode["url"],
-        )
-        add_text(item, "pubDate", arrow.get(episode["date"]).format(arrow.FORMAT_RSS))
-        if episode["duration_ms"]:
-            add_text(item, f"{{{ITUNES}}}duration", round(episode["duration_ms"] / 1000))
-        if episode["image_url"]:
-            ET.SubElement(item, f"{{{ITUNES}}}image", href=episode["image_url"])
-
-    ET.indent(rss)
-    return ET.tostring(rss, encoding="utf-8", xml_declaration=True)
+    items = "".join(render_item(episode) for episode in get_all_items(key))
+    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <atom:link href={attr(self_url)} rel="self" type="application/rss+xml" />
+        <title>{text(html.unescape(podcast['name']))}</title>
+        <description>{text(html.unescape(podcast['description']))}</description>
+        <link>{text(podcast['link'])}</link>
+        <language>it</language>
+        <copyright>© il Post</copyright>
+        <itunes:image href={attr(podcast['image'])} />
+        <itunes:category text="News" />
+        <itunes:author>{text(html.unescape(podcast['author']))}</itunes:author>
+        <itunes:explicit>false</itunes:explicit>{items}
+    </channel>
+</rss>
+"""
+    return feed.encode("utf-8")
 
 
 if __name__ == "__main__":
