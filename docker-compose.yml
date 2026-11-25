@@ -1,5 +1,3 @@
-version: "3.4"
-
 services:
     ilpostcast:
         container_name: ilpostcast

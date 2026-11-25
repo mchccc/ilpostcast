@@ -1,4 +1,4 @@
-FROM python:3.12.2-bullseye
+FROM python:3.12-slim-trixie
 
 WORKDIR /usr/src/app
 ENV DB_FILE=ilpostcast.db

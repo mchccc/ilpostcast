@@ -1,4 +1,6 @@
 *.env
+*.db
+*.db-journal
 
 .DS_Store
 .vscode
