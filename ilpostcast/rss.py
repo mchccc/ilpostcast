@@ -1,51 +1,65 @@
-import requests
+import re
+import xml.etree.ElementTree as ET
 import arrow
-from sqlite_interface import get_all_items
+from sqlite_interface import init_db, get_all_items
 from scrape_new import PODCASTS, preload_podcasts
-from icecream import ic
 
+ITUNES = "http://www.itunes.com/dtds/podcast-1.0.dtd"
+ATOM = "http://www.w3.org/2005/Atom"
+ET.register_namespace("itunes", ITUNES)
+ET.register_namespace("atom", ATOM)
+
+# Control characters that are illegal in XML 1.0 even when escaped.
+INVALID_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+init_db()  # creates the schema (and migrates old data) if the scraper hasn't yet
 preload_podcasts()  # must run to get all the up-to-date informations for podcasts
 
-def get_rss(table_name):
-    podcast = PODCASTS[table_name]
-    feed = f"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0"
-xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
-xmlns:podcast="https://podcastindex.org/namespace/1.0"
-xmlns:atom="http://www.w3.org/2005/Atom"
-xmlns:content="http://purl.org/rss/1.0/modules/content/">
-    <channel>
-        <atom:link href="https://podcast.mccc.it/{table_name}.xml" rel="self" type="application/rss+xml" />
-        <title>{podcast['name']}</title>
-        <description>{podcast['description']}</description>
-        <link>{podcast['url']}</link>
-        <language>it</language>
-        <copyright>&#169; il Post</copyright>
-        <itunes:image href="{podcast['image']}" />
-        <itunes:category text="News" />
-        <itunes:author>{podcast['author']}</itunes:author>
-        <itunes:explicit>false</itunes:explicit>"""
-    date_format = "%a, %d %b %Y %H:%M:%S %z"
 
-    for id, url, desc, title, date, content_type, content_length, img_url in get_all_items(table_name):
-        feed += f"""
-        <item>
-            <title>{title}</title>
-            <description>{desc}</description>
-            <enclosure
-                length="{content_length}"
-                type="{content_type}"
-                url="{url}"
-            />
-            <pubDate>{arrow.get(date).format(arrow.FORMAT_RSS)}</pubDate>
-            <itunes:image href="{img_url}" />
-        </item>"""
-    feed += """
-    </channel>
-</rss>"""
+def add_text(parent, tag, text):
+    element = ET.SubElement(parent, tag)
+    if text is not None:
+        element.text = INVALID_XML_CHARS.sub("", str(text))
+    return element
 
-    return feed
+
+def get_rss(key):
+    """Build a podcast's RSS feed as UTF-8 bytes.
+
+    ElementTree escapes all text and attributes, so titles and the HTML
+    descriptions can't break the XML.
+    """
+    podcast = PODCASTS[key]
+    rss = ET.Element("rss", version="2.0")
+    channel = ET.SubElement(rss, "channel")
+    ET.SubElement(channel, f"{{{ATOM}}}link", href=f"https://podcast.mccc.it/{key}.xml", rel="self", type="application/rss+xml")
+    add_text(channel, "title", podcast["name"])
+    add_text(channel, "description", podcast["description"])
+    add_text(channel, "link", podcast["url"])
+    add_text(channel, "language", "it")
+    add_text(channel, "copyright", "© il Post")
+    ET.SubElement(channel, f"{{{ITUNES}}}image", href=podcast["image"])
+    ET.SubElement(channel, f"{{{ITUNES}}}category", text="News")
+    add_text(channel, f"{{{ITUNES}}}author", podcast["author"])
+    add_text(channel, f"{{{ITUNES}}}explicit", "false")
+
+    for episode in get_all_items(key):
+        item = ET.SubElement(channel, "item")
+        add_text(item, "title", episode["title"])
+        add_text(item, "description", episode["description"])
+        ET.SubElement(
+            item, "enclosure",
+            length=str(episode["content_length"] or 0),
+            type=episode["content_type"] or "audio/mpeg",
+            url=episode["url"],
+        )
+        add_text(item, "pubDate", arrow.get(episode["date"]).format(arrow.FORMAT_RSS))
+        if episode["image_url"]:
+            ET.SubElement(item, f"{{{ITUNES}}}image", href=episode["image_url"])
+
+    ET.indent(rss)
+    return ET.tostring(rss, encoding="utf-8", xml_declaration=True)
 
 
 if __name__ == "__main__":
-    ic(get_rss("morning"))
+    print(get_rss("morning").decode())

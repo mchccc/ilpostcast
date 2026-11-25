@@ -1,80 +1,83 @@
-import re
-import time
-import requests
+import sys
 import html
+import time
+import traceback
 import arrow
-import asyncio
-import logging
+import requests
 from icecream import ic
 from multiprocessing import Pool
-from fake_useragent import UserAgent
-from sqlite_interface import create_table, insert_data, get_all_ids, get_all_images, insert_image_data, create_images_table
+from sqlite_interface import init_db, get_all_ids, insert_episodes
 
-# logging.basicConfig(filename='example.log', encoding='utf-8', level=logging.DEBUG)
-
-DOMAIN = "https://ilpost.it"
 BASE_URL = "https://api-prod.ilpost.it/podcast/v1/podcast"
 PODCASTS = {
     "morning": {
-        "table_name": "morning",
         "slug": "morning",
     },
     "tienimi_bordone": {
-        "table_name": "tienimi_bordone",
         "slug": "tienimi-bordone",
     },
     "tienimi_morning": {
-        "table_name": "tienimi_morning",
         "slug": "tienimi_morning",
     },
     "tienimi_parigi": {
-        "table_name": "tienimi_parigi",
         "slug": "tienimi-parigi",
     },
     "indagini": {
-        "table_name": "indagini",
         "slug": "indagini",
     },
     "altreindagini": {
-        "table_name": "altreindagini",
         "slug": "altre-indagini",
     },
     "sanremo": {
-        "table_name": "sanremo",
         "slug": "il-podcast-del-post-su-sanremo",
     },
     "eurovision": {
-        "table_name": "eurovision",
         "slug": "podcast-eurovision",
     },
     "ascolta": {
-        "table_name": "ascolta",
         "slug": "ascolta",
     },
 }
 
+TIMEOUT = (10, 60)  # seconds: (connect, read)
+MAX_ATTEMPTS = 4  # waits 2s, 4s, 8s between attempts
+RETRY_STATUSES = {429, 500, 502, 503, 504}
 
-IMAGES = {}
-PRELOAD = False
+
+def request(method, url, **kwargs):
+    """Send an HTTP request with a timeout, retrying transient failures with backoff.
+
+    Raises immediately on other error statuses, and with the last error once
+    the attempts run out.
+    """
+    for attempt in range(MAX_ATTEMPTS):
+        if attempt:
+            time.sleep(2 ** attempt)
+        try:
+            response = requests.request(method, url, timeout=TIMEOUT, **kwargs)
+        except (requests.ConnectionError, requests.Timeout) as error:
+            last_error = error
+            continue
+        if response.status_code not in RETRY_STATUSES:
+            response.raise_for_status()
+            return response
+        last_error = requests.HTTPError(f"{response.status_code} for {url}", response=response)
+    raise last_error
 
 
 def get_all(url, page=1, max_pages=1):
     data = []
-    hits=100
-    iter = 1
+    hits = 100
+    fetched = 0
     last_page = False
-    while not last_page and (max_pages is None or iter <= max_pages):
-        response = requests.get(f"{url}?pg={page}&hits={hits}")
-        if 200 <= response.status_code < 300:
-            response = response.json()
-            data += response["data"]
-            if response["head"]["data"]["pg"] * response["head"]["data"]["hits"] >= response["head"]["data"]["total"]:
-                last_page = True
-            ic(url, page, hits, last_page)
-            page += 1
-            iter += 1
-        else:
-            print(response)
+    while not last_page and (max_pages is None or fetched < max_pages):
+        response = request("GET", url, params={"pg": page, "hits": hits}).json()
+        data += response["data"]
+        head = response["head"]["data"]
+        last_page = not response["data"] or head["pg"] * head["hits"] >= head["total"]
+        ic(url, page, hits, last_page)
+        page += 1
+        fetched += 1
     return data, last_page
 
 
@@ -92,73 +95,80 @@ def preload_podcasts():
                 PODCASTS[key] = podcast
 
 
-def get_image_id(image_url):
-    global IMAGES
-    if image_url not in IMAGES:
-        image_id = len(IMAGES) + 1
-        insert_image_data(image_id, image_url)
-        IMAGES[image_url] = image_id
-    else:
-        image_id = IMAGES[image_url]
-    return image_id
+def get_audio_headers(url):
+    """Return (content_type, content_length) for an episode's audio, or None if it's unreachable."""
+    try:
+        headers = request("HEAD", url).headers
+    except requests.RequestException as error:
+        ic("audio unreachable, will retry next run", url, error)
+        return None
+    return headers.get("Content-Type", "audio/mpeg"), headers.get("Content-Length", 0)
+
 
 def get_new_episodes_list(url, existing_ids):
-    episodes = {}
+    """Fetch the episodes we don't have yet.
+
+    Pages come newest first, so stop after the first page that contains an
+    episode we already have.
+    """
+    episodes = []
     page = 1
     while True:
         episodes_data, last_page = get_all(url, page=page)
-        episodes_local = {}
-        for e in episodes_data:
-            episode_id = e["id"]
-            if episode_id not in existing_ids:
-                head = requests.head(e["episode_raw_url"]).headers
-                episodes_local[episode_id] = {
-                    "id": episode_id,
-                    "url": e["episode_raw_url"],
-                    "desc": e["content_html"],
-                    "image_id": get_image_id(e["image"]),
-                    "title": html.unescape(e["title"]),
-                    "date": e["date"],
-                    "content_type": head["Content-Type"],
-                    "content_length": head["Content-Length"],
-                }
-        episodes.update(episodes_local)
-        if ic(len(episodes_local)) < ic(len(episodes_data)) or last_page:
+        new_episodes = [e for e in episodes_data if e["id"] not in existing_ids]
+        for e in new_episodes:
+            audio = get_audio_headers(e["episode_raw_url"])
+            if audio is None:
+                continue
+            content_type, content_length = audio
+            episodes.append({
+                "id": e["id"],
+                "url": e["episode_raw_url"],
+                "description": e["content_html"],
+                "image_url": e["image"],
+                "title": html.unescape(e["title"]),
+                "date": e["date"],
+                "content_type": content_type,
+                "content_length": content_length,
+            })
+        ic(len(new_episodes), len(episodes_data))
+        if len(new_episodes) < len(episodes_data) or last_page:
             break
         page += 1
     return episodes
 
 
-def get_links_new_episodes(podcast):
-    create_table(name=podcast["table_name"], drop=False)
-    existing_ids = set(get_all_ids(table=podcast["table_name"]))
-    links = get_new_episodes_list(podcast["url"], existing_ids)
-    return links, podcast["table_name"]
+def scrape_podcast(item):
+    """Fetch and store one podcast's new episodes.
+
+    Runs in a worker process and never raises, so one broken podcast can't
+    stop the others: returns (key, dates of new episodes, error or None).
+    """
+    key, podcast = item
+    try:
+        if "url" not in podcast:
+            raise LookupError(f"slug {podcast['slug']!r} not found in the API's podcast list")
+        episodes = get_new_episodes_list(podcast["url"], get_all_ids(key))
+        insert_episodes(key, episodes)
+        return key, [arrow.get(e["date"]).format(arrow.FORMAT_RSS) for e in episodes], None
+    except Exception:
+        return key, [], traceback.format_exc()
 
 
 def main():
-    global IMAGES
     preload_podcasts()
-    create_images_table()
-    IMAGES = get_all_images()
+    init_db()
 
     with Pool(4) as p:
-        new_episodes = p.map(
-            get_links_new_episodes,
-            [podcast for podcast in PODCASTS.values()],
-            chunksize=4
-        )
+        results = p.map(scrape_podcast, PODCASTS.items())
 
-    report = {}
-    for links, table_name in new_episodes:
-        ic(len(links), table_name)
-        dates = []
-        for episode_id, data in links.items():
-            insert_data([data], table=table_name)
-            dates.append(arrow.get(data["date"]).format(arrow.FORMAT_RSS))
-        if dates:
-            report[table_name] = dates
+    report = {key: dates for key, dates, error in results if dates}
     ic(report)
+    errors = {key: error for key, _, error in results if error}
+    for key, error in errors.items():
+        print(f"{key} failed:\n{error}", file=sys.stderr)
+    return 1 if errors else 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
