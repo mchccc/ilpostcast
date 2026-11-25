@@ -8,9 +8,6 @@ from scrape_new import PODCASTS, preload_podcasts
 # Control characters that are illegal in XML 1.0, even escaped or inside CDATA.
 INVALID_XML_CHARS = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 
-init_db()  # creates the schema (and migrates old data) if the scraper hasn't yet
-preload_podcasts()  # must run to get all the up-to-date informations for podcasts
-
 
 def clean(value):
     return INVALID_XML_CHARS.sub("", "" if value is None else str(value))
@@ -64,6 +61,7 @@ def render_item(episode):
 def get_rss(key, feed_name=None):
     """Build a podcast's RSS feed as UTF-8 bytes.
 
+    Needs preload_podcasts() to have run (app.create_app() does it).
     `feed_name` is the name in the feed's URL (defaults to `key`), used for the
     self link. Every value goes through text(), attr() or cdata(), so nothing
     coming from the API can break the XML. The API's podcast name, author and
@@ -95,4 +93,6 @@ xmlns:atom="http://www.w3.org/2005/Atom">
 
 
 if __name__ == "__main__":
+    init_db()
+    preload_podcasts()
     print(get_rss("morning").decode())
