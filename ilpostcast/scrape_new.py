@@ -6,7 +6,7 @@ import arrow
 import requests
 from icecream import ic
 from multiprocessing import Pool
-from sqlite_interface import init_db, get_all_ids, insert_episodes
+from sqlite_interface import init_db, get_all_ids, insert_episodes, update_episode_details
 
 BASE_URL = "https://api-prod.ilpost.it/podcast/v1/podcast"
 PODCASTS = {
@@ -90,7 +90,8 @@ def preload_podcasts():
                 podcast["name"] = podcast_data["title"]
                 podcast["author"] = podcast_data["author"]
                 podcast["description"] = podcast_data["description"]
-                podcast["url"] = f"{BASE_URL}/{podcast_data['slug']}"
+                podcast["api_url"] = f"{BASE_URL}/{podcast_data['slug']}"
+                podcast["link"] = podcast_data.get("share_url") or f"https://www.ilpost.it/podcasts/{podcast_data['slug']}/"
                 podcast["image"] = podcast_data["image_web"]
                 PODCASTS[key] = podcast
 
@@ -103,6 +104,11 @@ def get_audio_headers(url):
         ic("audio unreachable, will retry next run", url, error)
         return None
     return headers.get("Content-Type", "audio/mpeg"), headers.get("Content-Length", 0)
+
+
+def episode_details(e):
+    """The optional extras we keep for each episode: its web page and its duration."""
+    return {"link": e.get("share_url"), "duration_ms": e.get("milliseconds")}
 
 
 def get_new_episodes_list(url, existing_ids):
@@ -130,6 +136,7 @@ def get_new_episodes_list(url, existing_ids):
                 "date": e["date"],
                 "content_type": content_type,
                 "content_length": content_length,
+                **episode_details(e),
             })
         ic(len(new_episodes), len(episodes_data))
         if len(new_episodes) < len(episodes_data) or last_page:
@@ -146,9 +153,9 @@ def scrape_podcast(item):
     """
     key, podcast = item
     try:
-        if "url" not in podcast:
+        if "api_url" not in podcast:
             raise LookupError(f"slug {podcast['slug']!r} not found in the API's podcast list")
-        episodes = get_new_episodes_list(podcast["url"], get_all_ids(key))
+        episodes = get_new_episodes_list(podcast["api_url"], get_all_ids(key))
         insert_episodes(key, episodes)
         return key, [arrow.get(e["date"]).format(arrow.FORMAT_RSS) for e in episodes], None
     except Exception:
@@ -170,5 +177,24 @@ def main():
     return 1 if errors else 0
 
 
+def backfill_details():
+    """Fill in link and duration for episodes stored before those were tracked.
+
+    Walks every page of every podcast once (API listings only, no audio
+    requests). Meant to be run by hand, once:
+        python ./ilpostcast/scrape_new.py --backfill
+    """
+    preload_podcasts()
+    init_db()
+    for key, podcast in PODCASTS.items():
+        if "api_url" not in podcast:
+            ic("not in the API, skipping", key)
+            continue
+        episodes_data, _ = get_all(podcast["api_url"], max_pages=None)
+        updated = update_episode_details(key, [{"id": e["id"], **episode_details(e)} for e in episodes_data])
+        ic(key, len(episodes_data), updated)
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(backfill_details() if "--backfill" in sys.argv[1:] else main())

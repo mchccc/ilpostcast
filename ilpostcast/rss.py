@@ -35,7 +35,7 @@ def get_rss(key):
     ET.SubElement(channel, f"{{{ATOM}}}link", href=f"https://podcast.mccc.it/{key}.xml", rel="self", type="application/rss+xml")
     add_text(channel, "title", podcast["name"])
     add_text(channel, "description", podcast["description"])
-    add_text(channel, "link", podcast["url"])
+    add_text(channel, "link", podcast["link"])
     add_text(channel, "language", "it")
     add_text(channel, "copyright", "© il Post")
     ET.SubElement(channel, f"{{{ITUNES}}}image", href=podcast["image"])
@@ -46,7 +46,13 @@ def get_rss(key):
     for episode in get_all_items(key):
         item = ET.SubElement(channel, "item")
         add_text(item, "title", episode["title"])
+        if episode["link"]:
+            add_text(item, "link", episode["link"])
         add_text(item, "description", episode["description"])
+        # The enclosure URL, not the episode id: apps have been identifying these
+        # episodes by enclosure URL while the feed had no guid, so this keeps them
+        # from showing every episode again as new.
+        add_text(item, "guid", episode["url"]).set("isPermaLink", "false")
         ET.SubElement(
             item, "enclosure",
             length=str(episode["content_length"] or 0),
@@ -54,6 +60,8 @@ def get_rss(key):
             url=episode["url"],
         )
         add_text(item, "pubDate", arrow.get(episode["date"]).format(arrow.FORMAT_RSS))
+        if episode["duration_ms"]:
+            add_text(item, f"{{{ITUNES}}}duration", round(episode["duration_ms"] / 1000))
         if episode["image_url"]:
             ET.SubElement(item, f"{{{ITUNES}}}image", href=episode["image_url"])
 
